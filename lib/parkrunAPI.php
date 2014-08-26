@@ -344,7 +344,7 @@ class parkrunAPI {
 				$next=$this->parkrunFetchRel($obj,'next');
 				return(array('object'=>$obj,'error'=>null,'next'=>$next,'meta'=>null));
 			} else {
-				if (curl_errno($this->curlhandle)) {
+				if ((isset($this->curlhandle))&&(curl_errno($this->curlhandle))) {
 					$http_status = curl_getinfo($http, CURLINFO_HTTP_CODE);
 					return(array('object'=>$obj,'error'=>"error occurred: http status $http_status",'meta'=>null,'next'=>null));
 				} else {
