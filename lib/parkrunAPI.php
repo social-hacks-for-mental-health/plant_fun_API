@@ -7,53 +7,121 @@ class parkrunAPI {
 	private $token;
 	private $curlhandle;
 	private $tokenError;
-	private $debug=0;
+	private $debugging=false;
+	private $caching=true;
+	private $scope;
+	private $keypath;
+	private $cachepath="/usr/local/keys/api/.parkrunapi.cached";
+	private $expiry_buffer=5;
+	private $cache_umask=0077;
 
-	public function __construct( $path="/usr/local/keys/api/.parkrunapi.keys",$api="https://test-api.parkrun.com",$scope="core",$cachepath="/usr/local/keys/api/.parkrunapi.cached") {
-#		$this->loadAccessToken ("/tmp/rl.test",$api);
-		$this->getAccessToken ( $path, $api, $scope );
+	public function __construct( $keypath="/usr/local/keys/api/.parkrunapi.keys",$api="https://test-api.parkrun.com",$scope="core", $options=array()) {
 
-#		$this->saveAccessToken ("/tmp/rl.test");
-	}
+		if ((isset($options['scope'])) && (!(isset($scope)))) {
+			$this->scope=$options['scope'];
+		} elseif (!(isset($scope))) {
+			$this->scope='core';
+		} else {
+			$this->scope=$scope;
+		}
 
-	private function saveAccessToken ($cachepath) {
-		if ((isset($cachepath))&&($this->token)) {
-			if (file_put_contents($cachepath, serialize($this->token))) {;
-				error_log("Saved contents to [$cachepath]");
-			} else {
-				error_log("UNABLE to save contents to [$cachepath]");
+		if ((isset($options['keypath'])) && (!(isset($keypath)))) {
+			$this->keypath=$options['keypath'];
+		} elseif (!(isset($keypath))) {
+			$this->keypath="/usr/local/keys/api/.parkrunapi.keys";
+		} else {
+			$this->keypath=$keypath;
+		}
+
+		if ((isset($options['api'])) && (!(isset($api)))) {
+			$this->api=$options['api'];
+		} elseif (!(isset($api))) {
+			$this->api="https://test-api.parkrun.com";
+		} else {
+			$this->api=$api;
+		}
+
+		if (is_array($options)) {
+			if (isset($options['debug'])) {
+				$this->debugging=$options['debug'];
+				error_log("parkrun phpAPI: Debugging enabled");
+			}
+			if ((isset($options['cachepath'])) && (!(isset($cachepath)))) {
+				$this->cachepath=$options['cachepath'];
+			}
+			if ((isset($options['caching'])) && (!(isset($cachepath)))) {
+				$this->caching=$options['caching'];
+			}
+			if ((isset($options['umask'])) && (!(isset($umask)))) {
+				$this->cache_umask=$options['umask'];
+			}
+		}
+
+		umask($this->cache_umask);
+
+		if ($this->caching) {
+			$this->loadAccessToken ($api );
+		} 
+		if (!($this->isValid())) {
+			$this->debug("No valid token");
+			$this->getAccessToken ();
+			if ($this->caching) {
+				$this->saveAccessToken();
 			}
 		}
 	}
-	private function loadAccessToken ($cachepath,$api) {
-		error_log("Loading from [$cachepath]");
-		if (isset($cachepath)) {
-			$contents=file_get_contents($cachepath);
+
+	private function debug( $msg=null ) {
+		if (($this->debugging)&&(isset($msg))) {
+			error_log("parkrun phpAPI client: $msg");
+		}
+	}
+
+	private function saveAccessToken () {
+		if ($this->token) {
+			if (file_put_contents($this->cachepath, serialize($this->token))) {;
+				$this->debug("Saved contents to [$this->cachepath]");
+			} else {
+				$this->debug("UNABLE to save contents to [$this->cachepath]");
+			}
+		}
+	}
+	private function loadAccessToken () {
+		if (($this->caching)&&(is_readable($this->cachepath))) {
+			$this->debug("Loading from [$cachepath]");
+			$contents=file_get_contents($this->cachepath);
 			if ($contents) {
 				$this->token=unserialize($contents);
-				print_r($this->token);
-
-				if ($this->token) {
+				if (!($this->tokenExpired())) {
+					$this->debug("token is valid");
 					$this->curlhandle=curl_init();
 					$this->setCurl($this->token->access_token);
-					$this->setAPI($api);
+				} else {
+					$this->debug("token has expired; renewing");
+					$this->getAccessToken();
+					$this->saveAccessToken();
 				}
+
 			} else {
-				error_log("UNABLE to load contents from [$cachepath]");
+				$this->debug("UNABLE to load contents from [$this->cachepath]");
+				$this->getAccessToken ();
+				$this->saveAccessToken();
+			}
+		} else {
+			if ($this->caching) {
+				$this->debug("Caching enabled, but cache file not readable");
+				$this->getAccessToken ();
+				$this->saveAccessToken();
+			} else {
+				$this->getAccessToken ();
 			}
 		}
 	}
 
-
-	private function getAccessToken ( $path, $api, $scope ) {
-		if (!(isset($path))) {
-			$path="/usr/local/keys/api/.parkrunapi.keys";
-		}
-		if (!(isset($scope))) {
-			$scope='core';
-		}
-		if (file_exists($path)) {
-			$contents=file_get_contents($path);
+	private function getAccessToken ( ) {
+                $this->debug("Requesting new token");
+		if (file_exists($this->keypath)) {
+			$contents=file_get_contents($this->keypath);
 			$pattern="/^client_id:=(.*)\n/";
 			preg_match_all($pattern,$contents,$match);
 			if ($match) {
@@ -65,12 +133,14 @@ class parkrunAPI {
 				$secret=$match[2][0];
 			}
 		} else {
-			echo "No such file [$path]";
-			die;
+                        $this->debug("No such file [$this->keypath]");
+                        $this->token=null;
+                        $this->curlhandle=null;
+                        $this->tokenError=null;
+                        return null;
 		}
 
 		if ((isset($user))&&(isset($secret))) {
-			$this->setAPI($api);
 			$this->curlhandle=curl_init();
 
 			# Basic auth first so not using get_headers
@@ -81,7 +151,7 @@ class parkrunAPI {
 
 			$params=array(
 				"grant_type"=>'client_credentials',
-				"scope"=>$scope
+				"scope"=>$this->scope
 			);
 			curl_setopt($this->curlhandle,CURLOPT_HTTPHEADER,$headers);
 			curl_setopt($this->curlhandle,CURLOPT_URL,$this->api."/token.php");
@@ -103,8 +173,9 @@ class parkrunAPI {
 							'Content-type: application/json'
 							);
 					curl_setopt($this->curlhandle,CURLOPT_HTTPHEADER,$headers);
-
+					$decoded->expires_at=time()+($decoded->expires_in-$this->expiry_buffer);
 					$this->token=$decoded;
+					# Set the expires_at timestamp, but deduct a few seconds for paranoia
 				} else {
 					curl_close($this->curlhandle);
 					$this->token=null;
@@ -118,16 +189,8 @@ class parkrunAPI {
 				$this->curlhandle=null;
 			}
 		} else {
-			echo "No user credentials in [$path]";
+			$this->debug("No user credentials in [$this->keypath]");
 			$this->token=null;
-		}
-	}
-
-	private function setAPI($api) {
-		if (!(isset($api))) {
-			$this->api="https://test-api.parkrun.com";
-		} else {
-			$this->api=$api;
 		}
 	}
 
@@ -144,6 +207,12 @@ class parkrunAPI {
 
 	public function isValid() {
 		return ( $this->token != null );
+	}
+
+	public function tokenExpired() {
+		$time=time();
+		$this->debug("Token expiry ".$this->token->expires_at." time $time returning [".($this->token->expires_at >= $time)."]");
+		return ( $time >= $this->token->expires_at);
 	}
 
 	public function tokenError() {
@@ -173,9 +242,7 @@ class parkrunAPI {
 
 		curl_setopt($this->curlhandle,CURLOPT_HEADER,false);
 		$header=preg_split('/\n/',substr($result,0,$header_size));
-		if ($this->debug===1) {
-			error_log('headers: '.print_r($header,true));
-		}
+		$this->debug('headers: '.print_r($header,true));
 		return (array('header'=>$header,'body'=>substr($result,$header_size)));
 	}
 
@@ -183,9 +250,7 @@ class parkrunAPI {
 		if (isset($resource)) {
 			$resultArr=$this->fetch($resource);
 			$result=$resultArr['body'];
-			if ($this->debug===1) {
-				error_log("result [$result]");
-			}
+			$this->debug("result [$result]");
 			if ($result) {
 				$obj=json_decode($result);
 				if (!($obj)) {
@@ -195,7 +260,6 @@ class parkrunAPI {
 				if (isset($resultArr['header'])) {
 					$match=preg_grep('/^Content-Range:/',$resultArr['header']);
 					if ($match) {
-						#error_log("Have content range");
 						$keys=array_keys($match);
 						$basemeta=explode("/",str_replace("Content-Range: ","",$match[$keys[0]]));
 						if (isset($basemeta[1])) {
@@ -237,13 +301,11 @@ class parkrunAPI {
 	public function CreateResource( $resource, $fields) {
 		if ((isset($resource))&&(is_array($fields))) {
 			error_reporting(E_ALL);
-			#error_log("resource is ".$this->api.$resource);
+			#$this->debug("resource is ".$this->api.$resource);
 			curl_setopt($this->curlhandle,CURLOPT_URL,$this->api."$resource");
 
 			$header=$this->get_headers('POST');
-			if ($this->debug===1) {
-				error_log("headers ".print_r($header,true));
-			}
+			$this->debug("headers ".print_r($header,true));
 			curl_setopt($this->curlhandle,CURLOPT_HTTPHEADER,$header);
 			curl_setopt($this->curlhandle,CURLOPT_FOLLOWLOCATION, TRUE);
 			curl_setopt($this->curlhandle,CURLOPT_POST,true);
@@ -253,18 +315,18 @@ class parkrunAPI {
 #			$header_size=curl_getinfo($this->curlhandle,CURLINFO_HEADER_SIZE);
 #			curl_setopt($this->curlhandle,CURLOPT_HEADER,false);
 #			$header=preg_split('/\n/',substr($result,0,$header_size));
-			#error_log('headers: '.print_r($header,true));
-#			error_log("result is [".print_r($result,true)."]");
-#			error_log("header size $header_size is [".print_r($header,true)."]");
+			#$this->debug('headers: '.print_r($header,true));
+#			$this->debug("result is [".print_r($result,true)."]");
+#			$this->debug("header size $header_size is [".print_r($header,true)."]");
 
 #			$http_status= curl_getinfo($this->curlhandle);
-#			error_log("http_status: [".print_r($http_status,true)."]");
+#			$this->debug("http_status: [".print_r($http_status,true)."]");
 			curl_setopt($this->curlhandle,CURLOPT_POST,false);
 			curl_setopt($this->curlhandle,CURLOPT_HTTPHEADER,$this->get_headers('GET'));
 
 			return ( $this->handle_error($result) );
 		} else {
-			error_log("resource or fields not set");
+			$this->debug("resource or fields not set");
 			return null;
 		}
 	}
@@ -272,15 +334,15 @@ class parkrunAPI {
 	public function ModifyResource( $resource, $fields) {
 		if ((isset($resource))&&(is_array($fields))) {
 
-			#error_log("resource is ".$this->api.$resource);
+			#$this->debug("resource is ".$this->api.$resource);
 			curl_setopt($this->curlhandle,CURLOPT_URL,$this->api."$resource");
 
 			curl_setopt($this->curlhandle,CURLOPT_HTTPHEADER,$this->get_headers('PUT'));
 
-			curl_setopt($this->curlhandle,CURLOPT_POST,true);
 			curl_setopt($this->curlhandle,CURLOPT_POSTFIELDS, http_build_query($fields));
+			curl_setopt($this->curlhandle,CURLOPT_CUSTOMREQUEST, "PUT");
 			curl_setopt($this->curlhandle,CURLOPT_RETURNTRANSFER,true);
-			#error_log("fields are ".http_build_query($fields));
+			$this->debug("fields are ".http_build_query($fields));
 
 			$result=curl_exec($this->curlhandle);
 			$curl_error=curl_error($this->curlhandle);
@@ -288,9 +350,7 @@ class parkrunAPI {
 			curl_setopt($this->curlhandle,CURLOPT_POST,false);
 			curl_setopt($this->curlhandle,CURLOPT_HTTPHEADER,$this->get_headers('GET'));
 
-			if ($this->debug===1) {
-				error_log("curl_error: [$curl_error]");
-			}
+			$this->debug("curl_error: [$curl_error]");
 			return ( $this->handle_error($result) ) ;
 		}
 		return null;
@@ -318,9 +378,7 @@ class parkrunAPI {
 	}
 
 	private function handle_error( $result ) {
-		if ($this->debug===1) {
-			error_log("handle_error: ".print_r($result,true));
-		}
+		$this->debug("handle_error: ".print_r($result,true));
 		if (isset($result)) {
 			$obj=json_decode($result);
 			if (!($obj)) {
@@ -332,13 +390,9 @@ class parkrunAPI {
 					return(array('object'=>null,'error'=>"API has returned an invalid JSON object [$result] - please raise with support and reference api [$this->api] timestamp [".date(DATE_RFC2822)."]",'next'=>null,'meta'=>null));
 				}
 			}
-			if ($this->debug===1) {
-				error_log("handle_error obj: ".print_r($obj,true));
-			}
+			$this->debug("handle_error obj: ".print_r($obj,true));
 			if (isset($obj->status) && ($obj->status=='false')) {
-				if ($this->debug===1) {
-					error_log("error: ".print_r($obj,true));
-				}
+				$this->debug("error: ".print_r($obj,true));
 				return(array('object'=>$obj,'error'=>$obj->error->human_message,'next'=>null,'meta'=>null));
 			} elseif (isset($obj->status) && ($obj->status=='true')) {
 				$next=$this->parkrunFetchRel($obj,'next');

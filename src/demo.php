@@ -1,6 +1,6 @@
 <?php
 
-	require_once("lib/parkrunAPI.php");
+	require_once("../lib/parkrunAPI.php");
 
 	$token=new parkrunAPI("/home/richard/.parkrunapi.keys","https://rlrest.parkrun.com");
 	if (!($token->isValid())) {
