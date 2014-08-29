@@ -78,7 +78,7 @@ class parkrunAPI {
 	}
 
 	private function saveAccessToken () {
-		if ($this->token) {
+		if (($this->token)&&($this->caching)) {
 			if (file_put_contents($this->cachepath, serialize($this->token))) {;
 				$this->debug("Saved contents to [$this->cachepath]");
 			} else {
@@ -246,7 +246,7 @@ class parkrunAPI {
 		return (array('header'=>$header,'body'=>substr($result,$header_size)));
 	}
 
-	public function RequestResource($resource) {
+	public function RequestResource($resource,$depth=0) {
 		if (isset($resource)) {
 			$resultArr=$this->fetch($resource);
 			$result=$resultArr['body'];
@@ -255,6 +255,20 @@ class parkrunAPI {
 				$obj=json_decode($result);
 				if (!($obj)) {
 					return($this->handle_error($result));
+				} elseif (isset($obj->status)&&($obj->status=='false')) {
+					if ((isset($obj->error->code))&&($obj->error->code==401)) {
+						if ($depth<2) {
+							$this->debug("Token expired on server; refreshing");
+							$this->getAccessToken();
+							$this->saveAccessToken();
+							# try request again
+							return($this->RequestResource($resource,$depth+1));
+						} else {
+							$this->debug("Too many refresh attempts");
+							return($this->handle_error($result));
+						}
+					}
+#					if (isset($obj['status']
 				}
 				$next=$this->parkrunFetchRel($obj,'next');
 				if (isset($resultArr['header'])) {
