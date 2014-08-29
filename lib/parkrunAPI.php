@@ -8,10 +8,10 @@ class parkrunAPI {
 	private $curlhandle;
 	private $tokenError;
 	private $debugging=false;
-	private $caching=true;
+	private $caching=false;
 	private $scope;
 	private $keypath;
-	private $cachepath="/usr/local/keys/api/.parkrunapi.cached";
+	private $cachepath="/var/run/parkrun/api/.parkrun.token.cache";
 	private $expiry_buffer=5;
 	private $cache_umask=0077;
 
@@ -88,7 +88,7 @@ class parkrunAPI {
 	}
 	private function loadAccessToken () {
 		if (($this->caching)&&(is_readable($this->cachepath))) {
-			$this->debug("Loading from [$cachepath]");
+			$this->debug("Loading from [$this->cachepath]");
 			$contents=file_get_contents($this->cachepath);
 			if ($contents) {
 				$this->token=unserialize($contents);
@@ -242,7 +242,7 @@ class parkrunAPI {
 
 		curl_setopt($this->curlhandle,CURLOPT_HEADER,false);
 		$header=preg_split('/\n/',substr($result,0,$header_size));
-		$this->debug('headers: '.print_r($header,true));
+		#$this->debug('headers: '.print_r($header,true));
 		return (array('header'=>$header,'body'=>substr($result,$header_size)));
 	}
 
