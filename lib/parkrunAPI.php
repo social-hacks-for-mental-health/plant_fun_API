@@ -369,7 +369,27 @@ class parkrunAPI {
 		}
 		return null;
 	}
-	
+
+	public function DeleteResource($resource, $fields) {
+		if (isset($resource) && is_array($fields)) {
+			curl_setopt($this->curlhandle, CURLOPT_URL, $this->api . "$resource");
+			curl_setopt($this->curlhandle, CURLOPT_HTTPHEADER, $this->get_headers('DELETE'));
+			curl_setopt($this->curlhandle, CURLOPT_POST, true);
+			curl_setopt($this->curlhandle, CURLOPT_POSTFIELDS, http_build_query($fields));
+
+			$result = curl_exec($this->curlhandle);
+			$curl_error = curl_error($this->curlhandle);
+
+			# restore defensive defaults
+			curl_setopt($this->curlhandle, CURLOPT_POST, false);
+			curl_setopt($this->curlhandle, CURLOPT_HTTPHEADER, $this->get_headers('GET'));
+
+			return $this->handle_error($result);
+		}
+		return null;
+	}
+
+	# XXX use of Content-Type vs. Accept correct?
 	private function get_headers ( $type='GET' ) {
 		if ($type=='GET') {
 			return array(
@@ -387,6 +407,11 @@ class parkrunAPI {
 			return array(
 					"Accept: application/json",
 					'Authorization: Bearer '.$this->token->access_token,
+				);
+		} else if ($type=='DELETE') {
+			return array(
+					'Authorization: Bearer ' . $this->token->access_token,
+					'X-HTTP-Method-Override: DELETE'
 				);
 		}
 	}
