@@ -4,12 +4,13 @@ parkrunAPI
 Principally contains client wrappers for parkrun API. Notes:
 
 * PHP is most feature complete. Only supports client_credentials at this point.
-* dotnet only supports GET and client_credentials.
+* dotnet is binary only at the moment. We will be releasing the source code to this shortly. Currently only supports GET and client_credentials. 
 
 In progress, but still in early stages:
 
 * perl
 * python
+
 
 See also
 ========
