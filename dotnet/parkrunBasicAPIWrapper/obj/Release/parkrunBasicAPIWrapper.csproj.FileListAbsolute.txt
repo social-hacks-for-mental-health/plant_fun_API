@@ -1,0 +1,5 @@
+C:\vsswork2012\parkrunBasicAPIWrapper\parkrunBasicAPIWrapper\bin\Release\parkrunBasicAPIWrapper.dll
+C:\vsswork2012\parkrunBasicAPIWrapper\parkrunBasicAPIWrapper\bin\Release\parkrunBasicAPIWrapper.pdb
+C:\vsswork2012\parkrunBasicAPIWrapper\parkrunBasicAPIWrapper\obj\Release\parkrunBasicAPIWrapper.csprojResolveAssemblyReference.cache
+C:\vsswork2012\parkrunBasicAPIWrapper\parkrunBasicAPIWrapper\obj\Release\parkrunBasicAPIWrapper.dll
+C:\vsswork2012\parkrunBasicAPIWrapper\parkrunBasicAPIWrapper\obj\Release\parkrunBasicAPIWrapper.pdb

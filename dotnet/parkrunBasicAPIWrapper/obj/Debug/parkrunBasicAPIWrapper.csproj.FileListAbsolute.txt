@@ -1,0 +1,10 @@
+C:\vsswork2012\parkrunAPIBasicWrapper\parkrunAPIBasicWrapper\obj\Debug\parkrunBasicAPIWrapper.csprojResolveAssemblyReference.cache
+C:\vsswork2012\parkrunAPIBasicWrapper\parkrunAPIBasicWrapper\bin\Debug\parkrunAPIBasicWrapper.dll
+C:\vsswork2012\parkrunAPIBasicWrapper\parkrunAPIBasicWrapper\bin\Debug\parkrunAPIBasicWrapper.pdb
+C:\vsswork2012\parkrunAPIBasicWrapper\parkrunAPIBasicWrapper\obj\Debug\parkrunAPIBasicWrapper.dll
+C:\vsswork2012\parkrunAPIBasicWrapper\parkrunAPIBasicWrapper\obj\Debug\parkrunAPIBasicWrapper.pdb
+C:\vsswork2012\parkrunBasicAPIWrapper\parkrunBasicAPIWrapper\bin\Debug\parkrunBasicAPIWrapper.dll
+C:\vsswork2012\parkrunBasicAPIWrapper\parkrunBasicAPIWrapper\bin\Debug\parkrunBasicAPIWrapper.pdb
+C:\vsswork2012\parkrunBasicAPIWrapper\parkrunBasicAPIWrapper\obj\Debug\parkrunBasicAPIWrapper.csprojResolveAssemblyReference.cache
+C:\vsswork2012\parkrunBasicAPIWrapper\parkrunBasicAPIWrapper\obj\Debug\parkrunBasicAPIWrapper.dll
+C:\vsswork2012\parkrunBasicAPIWrapper\parkrunBasicAPIWrapper\obj\Debug\parkrunBasicAPIWrapper.pdb
