@@ -14,8 +14,10 @@ Usage Example
 -------------
 
 * Create a file ~/.parkrunapi.keys containing access keys in format:
- `client_id:=your-parkrun-client-id`
- `client_secret:=your-parkrun-client-secret`
+<pre>
+	client_id:=your-parkrun-client-id
+	client_secret:=your-parkrun-client-secret
+</pre>
 
 * `chmod 400 ~/.parkrunapi.keys` like the good unix user you are
 
