@@ -17,3 +17,4 @@ See also
 * Early developer documentation at https://developer.parkrun.com
 * [Initial FAQ](http://support.parkrun.com/hc/en-us/categories/200347082-parkrun-API)
 * [Latest API news](http://www.parkrun.com/news/tag/api/)
+* [API Release notes](https://github.com/parkrun/parkrunAPI/wiki/Releases)
