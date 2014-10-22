@@ -125,12 +125,12 @@ class parkrunAPI {
 			$pattern="/^client_id:=(.*)\n/";
 			preg_match_all($pattern,$contents,$match);
 			if ($match) {
-				$user=$match[1][0];
+				$user=trim($match[1][0]);
 			}
-			$pattern="/(.*)client_secret:=(.*)\n/";
+			$pattern="/(.*)client_secret:=(.*)/";
 			preg_match_all($pattern,$contents,$match);
 			if ($match) {
-				$secret=$match[2][0];
+				$secret=trim($match[2][0]);
 			}
 		} else {
                         $this->debug("No such file [$this->keypath]");
