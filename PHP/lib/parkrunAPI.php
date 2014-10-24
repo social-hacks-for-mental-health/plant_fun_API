@@ -15,7 +15,7 @@ class parkrunAPI {
 	private $expiry_buffer=5;
 	private $cache_umask=0077;
 
-	public function __construct( $keypath="/usr/local/keys/api/.parkrunapi.keys",$api="https://test-api.parkrun.com",$scope="core", $options=array()) {
+	public function __construct( $keypath="/usr/local/keys/api/.parkrunapi.keys",$api="https://test-api.parkrun.com/",$scope="core", $options=array()) {
 
 		if ((isset($options['scope'])) && (!(isset($scope)))) {
 			$this->scope=$options['scope'];
@@ -36,7 +36,7 @@ class parkrunAPI {
 		if ((isset($options['api'])) && (!(isset($api)))) {
 			$this->api=$options['api'];
 		} elseif (!(isset($api))) {
-			$this->api="https://test-api.parkrun.com";
+			$this->api="https://test-api.parkrun.com/";
 		} else {
 			$this->api=$api;
 		}
@@ -55,6 +55,12 @@ class parkrunAPI {
 			if ((isset($options['umask'])) && (!(isset($umask)))) {
 				$this->cache_umask=$options['umask'];
 			}
+		}
+
+		if(substr($this->api, -1) !== '/') {
+			$this->debug("Adding trailing / to api [$this->api]");
+			# need a suffix
+			$this->api.="/";
 		}
 
 		umask($this->cache_umask);
@@ -246,8 +252,20 @@ class parkrunAPI {
 		return (array('header'=>$header,'body'=>substr($result,$header_size)));
 	}
 
+	private function tidyResource($resource) {
+		# remove leading / - it's enforced on $this->api
+		if (substr($resource,0,1)=='/') {
+			$this->debug("Dropping leading /");
+			$resource=substr($resource,1);
+		}
+		$this->debug("resource is [$resource]");
+		return $resource;
+	}
+
 	public function RequestResource($resource,$depth=0) {
 		if (isset($resource)) {
+			$resource=$this->tidyResource($resource);
+
 			$resultArr=$this->fetch($resource);
 			$result=$resultArr['body'];
 			$this->debug("result [$result]");
@@ -288,8 +306,6 @@ class parkrunAPI {
 					$meta=null;
 				}
 				return(array('object'=>$obj,'next'=>$next,'error'=>null,'meta'=>$meta));
-				return(array('object'=>$obj,'next'=>$next,'error'=>null,'meta'=>$meta));
-	
 			} else {
 				return(array('object'=>null,'next'=>null,'error'=>'No data returned','meta'=>null));
 			}
@@ -314,6 +330,8 @@ class parkrunAPI {
 
 	public function CreateResource( $resource, $fields) {
 		if ((isset($resource))&&(is_array($fields))) {
+			$resource=$this->tidyResource($resource);
+
 			error_reporting(E_ALL);
 			#$this->debug("resource is ".$this->api.$resource);
 			curl_setopt($this->curlhandle,CURLOPT_URL,$this->api."$resource");
@@ -347,6 +365,7 @@ class parkrunAPI {
 
 	public function ModifyResource( $resource, $fields) {
 		if ((isset($resource))&&(is_array($fields))) {
+			$resource=$this->tidyResource($resource);
 
 			#$this->debug("resource is ".$this->api.$resource);
 			curl_setopt($this->curlhandle,CURLOPT_URL,$this->api."$resource");
@@ -372,6 +391,8 @@ class parkrunAPI {
 
 	public function DeleteResource($resource, $fields) {
 		if (isset($resource) && is_array($fields)) {
+			$resource=$this->tidyResource($resource);
+
 			curl_setopt($this->curlhandle, CURLOPT_URL, $this->api . "$resource");
 			curl_setopt($this->curlhandle, CURLOPT_HTTPHEADER, $this->get_headers('DELETE'));
 			curl_setopt($this->curlhandle, CURLOPT_POST, true);
