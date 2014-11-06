@@ -381,6 +381,7 @@ class parkrunAPI {
 			$curl_error=curl_error($this->curlhandle);
 
 			curl_setopt($this->curlhandle,CURLOPT_POST,false);
+			curl_setopt($this->curlhandle,CURLOPT_CUSTOMREQUEST, 'GET');
 			curl_setopt($this->curlhandle,CURLOPT_HTTPHEADER,$this->get_headers('GET'));
 
 			$this->debug("curl_error: [$curl_error]");
@@ -403,6 +404,7 @@ class parkrunAPI {
 
 			# restore defensive defaults
 			curl_setopt($this->curlhandle, CURLOPT_POST, false);
+			curl_setopt($this->curlhandle,CURLOPT_CUSTOMREQUEST, 'GET');
 			curl_setopt($this->curlhandle, CURLOPT_HTTPHEADER, $this->get_headers('GET'));
 
 			return $this->handle_error($result);
@@ -410,7 +412,6 @@ class parkrunAPI {
 		return null;
 	}
 
-	# XXX use of Content-Type vs. Accept correct?
 	private function get_headers ( $type='GET' ) {
 		if ($type=='GET') {
 			return array(
