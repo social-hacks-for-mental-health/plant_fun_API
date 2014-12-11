@@ -470,6 +470,40 @@ class parkrunAPI {
 			return(array('object'=>null,'error'=>$curl_error,'next'=>null));
 		}
 	}
+
+	public function FetchAll ($resource,$resourceName,$fetchLimit=5) {
+		if (isset($resource)) {
+			$this->debug("Fetching first resource [".$resource."]");
+			$fetches=0;
+			$finalresults=array();
+			$error=null;
+
+			while ( (isset($resource)) && ($fetches<$fetchLimit) ) {
+				$this->debug("Fetching resource #$fetches [$resource]]");
+				$item=$this->RequestResource($resource);
+				$fetches++;
+				if (isset($item['object'])) {
+					foreach ($item['object']->data->$resourceName as $event) {
+						array_push($finalresults,$event);
+					}
+					$this->debug("Have item[next] ".print_r($item['next'],true));
+					$resource=$item['next'];
+				} else {
+					$resoure=null;
+					$error=$item['error'];
+				}
+			}
+			if ($finalresults) {
+				$returnresults->data->$resourceName=$finalresults;
+			} else {
+				$returnresults=null;
+			}
+			return (array('all'=>$returnresults,'fetches'=>$fetches,'fetchlimit'=>$fetchLimit,'error'=>$error,'meta'=>null));
+		} else {
+			return(array('object'=>null,'next'=>null,'error'=>'No resource provided','meta'=>null));
+		}
+	}
+
 }
 
 
