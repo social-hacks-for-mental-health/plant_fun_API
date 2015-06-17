@@ -9,11 +9,11 @@
   "author": "timdp",
   "license": "Apache-2.0",
   "dependencies": {
-    "q": "~1.2.0",
+    "q": "~1.4.1",
     "request": "~2.55.0"
   },
   "devDependencies": {
-    "nock": "^1.6.0",
+    "nock": "^2.6.0",
     "nodeunit": "^0.9.1"
   }
 }

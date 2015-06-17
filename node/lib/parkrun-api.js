@@ -42,7 +42,7 @@ function ParkrunAPI(baseURI, id, secret) {
         };
 
         request(opts, function handleTokenRequest(err, res, body) {
-            console.log(err, body);
+            //console.log(err, body);
             if(!err && body.hasOwnProperty("access_token")) {
                 self.access_token = body.access_token;
                 self.expiry = new Date().getTime()+(3570*1000);
@@ -74,7 +74,7 @@ function ParkrunAPI(baseURI, id, secret) {
         return deferred.promise;
     }
 
-    // Reduces the arrtributes of each Object in arr to only those specified in the fields array
+    // Reduces the attributes of each Object in arr to only those specified in the fields array
     this._filter = function(arr, fields) {
         if (fields.length>0) { 
             return arr.map(function(item) { 
@@ -85,6 +85,19 @@ function ParkrunAPI(baseURI, id, secret) {
                 return ret;
                 }, fields);
         } else return arr;
+    }
+
+    // Extract the max from the Content-Range object
+    this._getMax = function(range) {
+        for (key in range) {
+            dataKey = key.replace("Range","");
+            return range[key][0].max;
+        }
+    }
+
+    // Calculate the percentage and notify
+    this._notify = function(promise) {
+        promise.notify(((promise.pagesFetched / promise.totalPages)*100).toFixed(2));
     }
 
     // generic getter for API uris
@@ -99,12 +112,15 @@ function ParkrunAPI(baseURI, id, secret) {
         self._checkToken().then(function() {
             // request the first page
             self.request({uri: uri, qs: opts}, function(err, res, body) {
-                deferred.pagesFetched = 1;
                 if(!err && body.status==="true") {
-                    console.log(JSON.stringify(body));
+                    //console.log(JSON.stringify(body));
                     // Content-Range denotes paged output, need to fetch additional pages
                     if(body.hasOwnProperty("Content-Range")) {
-                       self._fetchPages(uri, opts, fields, body, deferred);
+                        deferred.pagesFetched = 1;
+                        deferred.expectedLength = self._getMax(body["Content-Range"]);
+                        deferred.totalPages = Math.ceil((deferred.expectedLength-100)/100)+1;
+                        self._notify(deferred);
+                        self._fetchPages(uri, opts, fields, body, deferred);
                     } else {
                         if(fields.length>0) body = self._filter(body, fields);
                         deferred.resolve(body);
@@ -127,14 +143,8 @@ function ParkrunAPI(baseURI, id, secret) {
     this._fetchPages = function(uri, opts, fields, body, deferred) {
         opts = (opts || self.opts);
         var promises = [];
-        var range = body["Content-Range"];
-        for (key in range) {
-            dataKey = key.replace("Range","");
-            max = range[key][0].max;
-            if(max > 100) {
-                var pages = Math.ceil((max-100)/100);
-                deferred.totalPages = pages+1;
-                for(var i = 0; i<pages; i++) {
+        if(deferred.expectedLength > 100) {
+                for(var i = 0; i<deferred.totalPages-1; i++) {
                     promises.push(self._getNext(uri, opts, i, deferred));   
                 }
                 Q.allSettled(promises).then(function(results) {
@@ -145,7 +155,7 @@ function ParkrunAPI(baseURI, id, secret) {
                         pageData = self._filter(pageData, fields);
                         data = data.concat(pageData);
                     }
-                    if(data.length!=max) deferred.reject("Data did not paginate correctly, expected "+max+" but received "+data.length);
+                    if(data.length!=deferred.expectedLength) deferred.reject("Data did not paginate correctly, expected "+deferred.expectedLength+" but received "+data.length);
                     deferred.resolve(data);
                 }).catch(function(err) {
                     deferred.reject(err);
@@ -159,9 +169,8 @@ function ParkrunAPI(baseURI, id, secret) {
                 deferred.resolve(body.data[dataKey]); 
                 } catch (err) {
                     deferred.reject(err);
-                }
-                 
             }
+                 
         }
     }
 
@@ -172,8 +181,15 @@ function ParkrunAPI(baseURI, id, secret) {
             opts = (opts || self.opts);
             opts.offset=(idx+1)*100;
             self.request({uri: uri, qs: opts}, function(err, res, body) {
+                // START workaround https://github.com/parkrun/parkrunAPI/issues/6
+                var max = self._getMax(body["Content-Range"]);
+                if(max != promise.expectedLength) {
+                    console.log("Updating expectedLength from "+promise.expectedLength+" to "+max);
+                    promise.expectedLength = max;
+                }
+                // END workaround
                 promise.pagesFetched++;
-                promise.notify((promise.pagesFetched / promise.totalPages)*100).toFixed(2));
+                self._notify(promise);
                 
                 if(!err && body.status==="true") deferred.resolve(body);
                 else deferred.reject(err);
