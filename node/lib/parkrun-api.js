@@ -95,6 +95,13 @@ function ParkrunAPI(baseURI, id, secret) {
         }
     }
 
+    this._getDataKey = function(range) {
+        for (key in range) {
+            dataKey = key.replace("Range","");
+            return dataKey;
+        }
+    }
+
     // Calculate the percentage and notify
     this._notify = function(promise) {
         promise.notify(((promise.pagesFetched / promise.totalPages)*100).toFixed(2));
@@ -113,11 +120,12 @@ function ParkrunAPI(baseURI, id, secret) {
             // request the first page
             self.request({uri: uri, qs: opts}, function(err, res, body) {
                 if(!err && body.status==="true") {
-                    //console.log(JSON.stringify(body));
+                    console.log(JSON.stringify(body));
                     // Content-Range denotes paged output, need to fetch additional pages
                     if(body.hasOwnProperty("Content-Range")) {
                         deferred.pagesFetched = 1;
                         deferred.expectedLength = self._getMax(body["Content-Range"]);
+                        deferred.dataKey = self._getDataKey(body["Content-Range"]);
                         deferred.totalPages = Math.ceil((deferred.expectedLength-100)/100)+1;
                         self._notify(deferred);
                         self._fetchPages(uri, opts, fields, body, deferred);
@@ -147,26 +155,29 @@ function ParkrunAPI(baseURI, id, secret) {
                 for(var i = 0; i<deferred.totalPages-1; i++) {
                     promises.push(self._getNext(uri, opts, i, deferred));   
                 }
-                Q.allSettled(promises).then(function(results) {
-                    data = body.data[dataKey];
-                    data = self._filter(data, fields);
-                    for(var i=0; i<results.length; i++) {
-                        var pageData = results[i].value.data[dataKey];
-                        pageData = self._filter(pageData, fields);
-                        data = data.concat(pageData);
-                    }
-                    if(data.length!=deferred.expectedLength) deferred.reject("Data did not paginate correctly, expected "+deferred.expectedLength+" but received "+data.length);
-                    deferred.resolve(data);
-                }).catch(function(err) {
-                    deferred.reject(err);
-                }).fin(function() {
-                    //self.fetching=false;
-                });
+
+                    Q.allSettled(promises).then(function(results) {
+                        data = body.data[deferred.dataKey];
+                        data = self._filter(data, fields);
+                        for(var i=0; i<results.length; i++) {
+                            if(results[i].state != "fulfilled") deferred.reject(result.reason);
+                            var pageData = results[i].value.data[deferred.dataKey];
+                            pageData = self._filter(pageData, fields);
+                            data = data.concat(pageData);
+                        }
+                        if(data.length!=deferred.expectedLength) deferred.reject("Data did not paginate correctly, expected "+deferred.expectedLength+" but received "+data.length);
+                        deferred.resolve(data);
+                    }).catch(function(err) {
+                        deferred.reject(err);
+                    }).fin(function() {
+                        //self.fetching=false;
+                    });
+
             } else {
-                console.log(dataKey+" "+uri+" "+opts+" "+fields);
+                console.log(deferred.dataKey+" "+uri+" "+opts+" "+fields);
                 try {
-                body.data[dataKey] = self._filter(body.data[dataKey], fields);
-                deferred.resolve(body.data[dataKey]); 
+                body.data[deferred.dataKey] = self._filter(body.data[deferred.dataKey], fields);
+                deferred.resolve(body.data[deferred.dataKey]); 
                 } catch (err) {
                     deferred.reject(err);
             }
@@ -181,13 +192,13 @@ function ParkrunAPI(baseURI, id, secret) {
             opts = (opts || self.opts);
             opts.offset=(idx+1)*100;
             self.request({uri: uri, qs: opts}, function(err, res, body) {
-                // START workaround https://github.com/parkrun/parkrunAPI/issues/6
+                /*// START workaround https://github.com/parkrun/parkrunAPI/issues/6
                 var max = self._getMax(body["Content-Range"]);
                 if(max != promise.expectedLength) {
                     console.log("Updating expectedLength from "+promise.expectedLength+" to "+max);
                     promise.expectedLength = max;
                 }
-                // END workaround
+                // END workaround*/
                 promise.pagesFetched++;
                 self._notify(promise);
                 
