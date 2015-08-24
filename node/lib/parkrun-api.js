@@ -89,9 +89,13 @@ function ParkrunAPI(baseURI, id, secret) {
 
     // Extract the max from the Content-Range object
     this._getMax = function(range) {
-        for (key in range) {
-            dataKey = key.replace("Range","");
-            return range[key][0].max;
+        if(Object.keys(range).length==1) {
+            for (key in range) {
+                dataKey = key.replace("Range","");
+                return range[key][0].max;
+            }
+        } else {
+            console.log("multidata");
         }
     }
 
@@ -123,12 +127,18 @@ function ParkrunAPI(baseURI, id, secret) {
                     console.log(JSON.stringify(body));
                     // Content-Range denotes paged output, need to fetch additional pages
                     if(body.hasOwnProperty("Content-Range")) {
-                        deferred.pagesFetched = 1;
-                        deferred.expectedLength = self._getMax(body["Content-Range"]);
-                        deferred.dataKey = self._getDataKey(body["Content-Range"]);
-                        deferred.totalPages = Math.ceil((deferred.expectedLength-100)/100)+1;
-                        self._notify(deferred);
-                        self._fetchPages(uri, opts, fields, body, deferred);
+                        contentRange = body["Content-Range"];
+                        
+                        if(Object.keys(contentRange).length===1) {
+                            deferred.pagesFetched = 1;
+                            deferred.expectedLength = self._getMax(contentRange);
+                            deferred.dataKey = self._getDataKey(contentRange);
+                            deferred.totalPages = Math.ceil((deferred.expectedLength-100)/100)+1;
+                            self._notify(deferred);
+                            self._fetchPages(uri, opts, fields, body, deferred);
+                        } else {
+                            deferred.resolve(body.data);
+                        }
                     } else {
                         if(fields.length>0) body = self._filter(body, fields);
                         deferred.resolve(body);
@@ -213,8 +223,12 @@ function ParkrunAPI(baseURI, id, secret) {
     }
 
     // parkrun API wrappers
-    this.getAthletesRuns = function(athelete, opts, fields) {
-        return self._getURI("/v1/athletes/"+athlete+"/runs", opts, fields);
+    this.getAthletesResults = function(athlete, opts, fields) {
+        return self._getURI("/v1/athletes/"+athlete+"/results", opts, fields);
+    }
+
+    this.getEventStatistics = function(id, opts, fields) {
+        return self._getURI("/v1/events/"+id+"/statistics", opts, fields);
     }
 
     this.getCancellations = function(opts, fields) {
@@ -223,6 +237,10 @@ function ParkrunAPI(baseURI, id, secret) {
 
     this.getCountries = function(opts, fields) {
         return self._getURI("/v1/countries", opts, fields);
+    }
+
+    this.getRegions = function(opts, fields) {
+        return self._getURI("/v1/regions", opts, fields);
     }
 
     this.getEvents = function (opts, fields) {
