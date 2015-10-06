@@ -1,6 +1,5 @@
 <?php
 
-
 class parkrunAPI {
 
 	private $api;
@@ -9,6 +8,11 @@ class parkrunAPI {
 	private $tokenError;
 	private $debugging=false;
 	private $caching=false;
+
+	private $user_token=false;
+	private $username=null;
+	private $password=null;
+
 	private $scope;
 	private $keypath;
 	private $cachepath="/var/run/parkrun/api/.parkrun.token.cache";
@@ -39,6 +43,18 @@ class parkrunAPI {
 			$this->api="https://test-api.parkrun.com/";
 		} else {
 			$this->api=$api;
+		}
+
+		if ( ((isset($options['user_token']))) && ($options['user_token']==true) ) {
+			$this->debug("Is user_token");
+			if ( (isset($options['username'])) && (isset($options['password']))) {
+				$this->username=$options['username'];
+				$this->password=$options['password'];
+				$this->user_token=true;
+			} else {
+				$this->debug("Need username and password options for user_token");
+				error_log("Need both username and password options for user_token");
+			}
 		}
 
 		if (is_array($options)) {
@@ -156,11 +172,19 @@ class parkrunAPI {
 					);
 
 			$params=array(
-				"grant_type"=>'client_credentials',
 				"scope"=>$this->scope
 			);
 			curl_setopt($this->curlhandle,CURLOPT_HTTPHEADER,$headers);
-			curl_setopt($this->curlhandle,CURLOPT_URL,$this->api."/token.php");
+			if ($this->user_token==true) {
+				$this->debug("is user_token: Setting username/password credentials");
+				curl_setopt($this->curlhandle,CURLOPT_URL,$this->api."/auth/user");
+				$params["username"]=$this->username;
+				$params["password"]=$this->password;
+				$params["grant_type"]='password';
+			} else {
+				$params["grant_type"]='client_credentials';
+				curl_setopt($this->curlhandle,CURLOPT_URL,$this->api."/auth/token");
+			}
 			curl_setopt($this->curlhandle,CURLOPT_FOLLOWLOCATION, TRUE);
 			curl_setopt($this->curlhandle,CURLOPT_POST,true);
 			curl_setopt($this->curlhandle,CURLOPT_POSTFIELDS, http_build_query($params));
@@ -199,7 +223,7 @@ class parkrunAPI {
 			$this->token=null;
 		}
 	}
-
+	
 	private function setCurl($access_token) {
 		curl_setopt($this->curlhandle,CURLOPT_POST,false);
 		$headers=array(
@@ -239,17 +263,25 @@ class parkrunAPI {
 	}
 
 	private function fetch ($resource) {
-		curl_setopt($this->curlhandle,CURLOPT_URL,$this->api."$resource");
+		if (isset($this->curlhandle)) {
+			curl_setopt($this->curlhandle,CURLOPT_URL,$this->api."$resource");
 
-		curl_setopt($this->curlhandle,CURLOPT_HEADER,true);
-		curl_setopt($this->curlhandle,CURLOPT_RETURNTRANSFER,true);
-		$result=curl_exec($this->curlhandle);
-		$header_size=curl_getinfo($this->curlhandle,CURLINFO_HEADER_SIZE);
+			#### verbose #### $this->debug("Requesting [".$this->api."$resource]");
+			
+			curl_setopt($this->curlhandle,CURLOPT_HEADER,true);
+			curl_setopt($this->curlhandle,CURLOPT_RETURNTRANSFER,true);
+			$result=curl_exec($this->curlhandle);
+			#### verbose #### $this->debug("Result [$result]");
+			$header_size=curl_getinfo($this->curlhandle,CURLINFO_HEADER_SIZE);
 
-		curl_setopt($this->curlhandle,CURLOPT_HEADER,false);
-		$header=preg_split('/\n/',substr($result,0,$header_size));
-		#$this->debug('headers: '.print_r($header,true));
-		return (array('header'=>$header,'body'=>substr($result,$header_size)));
+			curl_setopt($this->curlhandle,CURLOPT_HEADER,false);
+			$header=preg_split('/\n/',substr($result,0,$header_size));
+			#### verbose #### $this->debug("Header [$header] Body [".substr($result,$header_size)."]");
+			return (array('header'=>$header,'body'=>substr($result,$header_size)));
+		} else {
+			error_log("parkrun phpAPI client: invalid token");
+			return null;
+		}
 	}
 
 	private function tidyResource($resource) {
@@ -258,7 +290,10 @@ class parkrunAPI {
 			$this->debug("Dropping leading /");
 			$resource=substr($resource,1);
 		}
-		$this->debug("resource is [$resource]");
+		# no logging of password resources
+		if (!(strpos($resource,'/password'))) {
+			$this->debug("resource is [$resource]");
+		}
 		return $resource;
 	}
 
@@ -340,6 +375,7 @@ class parkrunAPI {
 			$this->debug("headers ".print_r($header,true));
 			curl_setopt($this->curlhandle,CURLOPT_HTTPHEADER,$header);
 			curl_setopt($this->curlhandle,CURLOPT_FOLLOWLOCATION, TRUE);
+			curl_setopt($this->curlhandle,CURLOPT_CUSTOMREQUEST, "POST");
 			curl_setopt($this->curlhandle,CURLOPT_POST,true);
 			curl_setopt($this->curlhandle,CURLOPT_POSTFIELDS, http_build_query($fields));
 			$result=curl_exec($this->curlhandle);
@@ -354,6 +390,7 @@ class parkrunAPI {
 #			$http_status= curl_getinfo($this->curlhandle);
 #			$this->debug("http_status: [".print_r($http_status,true)."]");
 			curl_setopt($this->curlhandle,CURLOPT_POST,false);
+			curl_setopt($this->curlhandle,CURLOPT_CUSTOMREQUEST, "GET");
 			curl_setopt($this->curlhandle,CURLOPT_HTTPHEADER,$this->get_headers('GET'));
 
 			return ( $this->handle_error($result) );
@@ -470,6 +507,42 @@ class parkrunAPI {
 			return(array('object'=>null,'error'=>$curl_error,'next'=>null));
 		}
 	}
+
+	public function FetchAll ($resource,$resourceName,$fetchLimit=5) {
+		if (isset($resource)) {
+			$this->debug("Fetching first resource [".$resource."]");
+			$fetches=0;
+			$finalresults=array();
+			$error=null;
+			$returnresults=new stdClass();
+			$returnresults->data=new stdClass();
+
+			while ( (isset($resource)) && ($fetches<$fetchLimit) ) {
+				$this->debug("Fetching resource #$fetches [$resource]]");
+				$item=$this->RequestResource($resource);
+				$fetches++;
+				if (isset($item['object'])) {
+					foreach ($item['object']->data->$resourceName as $event) {
+						array_push($finalresults,$event);
+					}
+					$this->debug("Have item[next] ".print_r($item['next'],true));
+					$resource=$item['next'];
+				} else {
+					$resoure=null;
+					$error=$item['error'];
+				}
+			}
+			if (isset($finalresults)) {
+				$returnresults->data->$resourceName=$finalresults;
+			} else {
+				$returnresults=null;
+			}
+			return (array('all'=>$returnresults,'fetches'=>$fetches,'fetchlimit'=>$fetchLimit,'error'=>$error,'meta'=>null));
+		} else {
+			return(array('object'=>null,'next'=>null,'error'=>'No resource provided','meta'=>null));
+		}
+	}
+
 }
 
 
