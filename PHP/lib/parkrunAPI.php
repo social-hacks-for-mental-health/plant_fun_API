@@ -58,7 +58,7 @@ class parkrunAPI {
 		}
 
 		if (is_array($options)) {
-			if (isset($options['debug'])) {
+			if ((isset($options['debug'])) && ($options['debug']==true)){
 				$this->debugging=$options['debug'];
 				error_log("parkrun phpAPI: Debugging enabled");
 			}
@@ -521,15 +521,19 @@ class parkrunAPI {
 				$this->debug("Fetching resource #$fetches [$resource]]");
 				$item=$this->RequestResource($resource);
 				$fetches++;
-				if (isset($item['object'])) {
+				if (isset($item['object']) && isset($item['object']->data->$resourceName)) {
 					foreach ($item['object']->data->$resourceName as $event) {
 						array_push($finalresults,$event);
 					}
 					$this->debug("Have item[next] ".print_r($item['next'],true));
 					$resource=$item['next'];
 				} else {
-					$resoure=null;
-					$error=$item['error'];
+					$resource=null;
+					if (isset($item['error'])) {
+						$error=$item['error'];
+					} else {
+						$error='request error';
+					}
 				}
 			}
 			if (isset($finalresults)) {
