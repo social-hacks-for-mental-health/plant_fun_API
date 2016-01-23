@@ -227,6 +227,10 @@ function ParkrunAPI(baseURI, id, secret) {
         return self._getURI("/v1/athletes/"+athlete+"/results", opts, fields);
     }
 
+    this.getAthletesVolunteering = function(athlete, opts, fields) {
+        return self._getURI("/v1/athletes/"+athlete+"/volunteerduties", opts, fields);
+    }
+
     this.getEventStatistics = function(id, opts, fields) {
         return self._getURI("/v1/events/"+id+"/statistics", opts, fields);
     }

@@ -84,6 +84,7 @@ module.exports.testExpiry = testCase({
 	}
 })
 
+/*
 module.exports.testAPICallNoPagination = testCase({
     "Test API call no pagination": function(test) {
         test.fail("Not implemented");
@@ -97,3 +98,4 @@ module.exports.testAPICallWithPagination = testCase({
         test.done();
     }
 })
+*/
