@@ -1,0 +1,19 @@
+{
+  "name": "parkrun-api",
+  "version": "0.0.1",
+  "description": "Node.js wrapper for the parkrun api.",
+  "main": "lib/parkrun-api.js",
+  "scripts": {
+    "test": "nodeunit tests/tests.js"
+  },
+  "author": "timdp",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "q": "~1.4.1",
+    "request": "~2.55.0"
+  },
+  "devDependencies": {
+    "nock": "^2.6.0",
+    "nodeunit": "^0.9.1"
+  }
+}
