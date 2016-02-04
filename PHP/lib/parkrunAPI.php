@@ -177,13 +177,13 @@ class parkrunAPI {
 			curl_setopt($this->curlhandle,CURLOPT_HTTPHEADER,$headers);
 			if ($this->user_token==true) {
 				$this->debug("is user_token: Setting username/password credentials");
-				curl_setopt($this->curlhandle,CURLOPT_URL,$this->api."/auth/user");
+				curl_setopt($this->curlhandle,CURLOPT_URL,$this->api."auth/user");
 				$params["username"]=$this->username;
 				$params["password"]=$this->password;
 				$params["grant_type"]='password';
 			} else {
 				$params["grant_type"]='client_credentials';
-				curl_setopt($this->curlhandle,CURLOPT_URL,$this->api."/auth/token");
+				curl_setopt($this->curlhandle,CURLOPT_URL,$this->api."auth/token");
 			}
 			curl_setopt($this->curlhandle,CURLOPT_FOLLOWLOCATION, TRUE);
 			curl_setopt($this->curlhandle,CURLOPT_POST,true);
