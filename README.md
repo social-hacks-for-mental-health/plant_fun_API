@@ -22,4 +22,4 @@ Status
 
 * Queries/issues should be directed to [parkrun support](https://support.parkrun.com)
 * Developer panel available via [parkrun profile](https://www.parkrun.com/profile/developer/) gives short-lived access_token
-** limited support in client libraries for full authentications
+* limited support in client libraries for full authentications
