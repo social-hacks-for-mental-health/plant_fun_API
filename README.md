@@ -2,12 +2,11 @@ Goal
 ========
 The average Australian needs to plant about 870 trees a year to carbon offset a normal lifestyle. We have decided to address a minor problem, in that, those people who routinely complete this task, should be eligible for a large degree of social recognition. We want to provide tshirts and electronic badges for people to use when they meet certain treefun milestones, that are directly, analogous to shirts that are available for completing 50 parkrun runs.
 
-The goal is to use the parkrun model of event organisation, and community management, to make tree planting more fun social and competitive.
+* The goal is to use the parkrun model of event organisation, and community management, to make tree planting more fun social and competitive.
 
+* Gamification, badging and social recognition behind acts of carbon offset and carbon sequestration.
 
-Gamification, badging and social recognition behind acts of carbon offset and carbon sequestration.
-
-parkrunAPI
+parkfunAPI (parkrunAPI)
 ==========
 
 Principally contains client wrappers for parkrun API. Notes:
