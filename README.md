@@ -6,7 +6,7 @@ The average Australian needs to plant about 870 trees a year to carbon offset a 
 
 * Gamification, badging and social recognition behind acts of carbon offset and carbon sequestration.
 
-parkfunAPI (parkrunAPI)
+ Tree fun API (formely parkrunAPI)
 ==========
 
 Principally contains client wrappers for parkrun API. Notes:
